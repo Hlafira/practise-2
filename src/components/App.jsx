@@ -1,16 +1,91 @@
-export const App = () => {
-  return (
-    <div
-      style={{
-        height: '100vh',
-        display: 'flex',
-        justifyContent: 'center',
-        alignItems: 'center',
-        fontSize: 40,
-        color: '#010101'
-      }}
-    >
-      React homework template
-    </div>
-  );
-};
+import { Component } from 'react';
+import { fetchMovies } from '../services/moviesAPI';
+import MoviesGallery from './MoviesGallery/MoviesGallery';
+
+import Button from './Button/Button';
+import Modal from './Modal/Modal';
+
+export class App extends Component {
+  state = {
+    isMovieShown: false,
+    page: 1,
+    isLoading: false,
+    movies: [],
+    currentImage: null,
+  };
+
+  componentDidUpdate(prevProps, prevState) {
+    const { isMovieShown, page } = this.state;
+    if (
+      (isMovieShown !== prevState.isMovieShown && isMovieShown) ||
+      (prevState.page !== page && isMovieShown)
+    ) {
+      this.getMovies();
+    }
+    if (!isMovieShown && isMovieShown !== prevState.isMovieShown) {
+      this.setState({ movies: [], page: 1 });
+    }
+  }
+
+  showFilmsList = () => {
+    this.setState(({ isMovieShown }) => ({ isMovieShown: !isMovieShown }));
+  };
+
+  getMovies() {
+    this.setState({ isLoading: true });
+    const { page } = this.state;
+    fetchMovies(page)
+      .then(({ data: { results } }) => {
+        this.setState(prevState => {
+          return { movies: [...prevState.movies, ...results] };
+        });
+      })
+      .catch(e => {
+        console.log(e.message);
+      })
+      .finally(() => {
+        this.setState({ isLoading: false });
+      });
+    // try {
+    //   const { data: films } = await fetchMovies(2);
+    //   console.log(films);
+    // } finally {
+    //   this.setState({ isLoading: false });
+    // }
+  }
+
+  loadMore = () => {
+    this.setState(prevState => ({ page: prevState.page + 1 }));
+  };
+
+  openModal = data => {
+    this.setState({ currentImage: data });
+  };
+
+  closeModal = () => {
+    this.setState({ currentImage: null });
+  };
+
+  render() {
+    const { showFilmsList, loadMore } = this;
+    const { isMovieShown, movies, currentImage } = this.state;
+    return (
+      <>
+        <Button
+          clickHandler={showFilmsList}
+          text={isMovieShown ? 'Hide movies list' : 'Show movies list'}
+        />
+
+        {isMovieShown && (
+          <>
+            <MoviesGallery movies={movies} showModal={this.openModal} />
+            <Button text="Load more" clickHandler={loadMore} />
+          </>
+        )}
+        {currentImage && (
+          <Modal currentImage={currentImage} closeModal={this.closeModal} />
+        )}
+      </>
+    );
+  }
+}
